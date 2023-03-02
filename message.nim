@@ -48,11 +48,11 @@ type
   ResultKind* = enum
     Error, Success
   Result*[E, S] = object
-    case kind: ResultKind
+    case kind*: ResultKind
     of Error:
-      error: E
+      error*: E
     of Success:
-      value: S
+      value*: S
 
 func success*[E, S](value: S): Result[E, S] =
   Result[E, S](kind: Success, value: value)
@@ -132,8 +132,8 @@ proc parseMessage*(stream: Stream): Result[string, Message] =
   var trail: bool = false
   template parseParam: string =
     # handling the fucking space
-    if stream.readChar() != ' ':
-      return error[string, Message]("malformed param")
+    if stream.peekChar() != ' ':
+      return error[string, Message]("malformed param " & stream.readChar.repr() )
     while stream.peekChar == ' ':
       discard stream.readChar()
     var buff = newStringofCap(4)
@@ -151,7 +151,7 @@ proc parseMessage*(stream: Stream): Result[string, Message] =
 
   var params = newSeq[string]()
   params.add parseParam()
-  while stream.peekStr(2) != "\r\n":
+  while not stream.atEnd() and stream.peekStr(2) != "\r\n":
     params.add parseParam()
   discard stream.readStr(2)
   success[string, Message](Message( prefix: prefix, command: command,
@@ -177,7 +177,7 @@ proc scanHost(stream: Stream): string =
 when isMainModule:
   let inp = newStringStream(
     "PASS somepass\r\nNICK cramble\r\nUSER cramble cramble dave :trystan `cramble` vincent\r\n" &
-    ":dave!john@niel PRIVMSG #channel :what the fuck\r\n")
+    ":dave!john@nimain_futel PRIVMSG #channel :what the fuck\r\n")
   while not inp.atEnd():
     let fst = inp.parseMessage
     if fst.kind == Error:
